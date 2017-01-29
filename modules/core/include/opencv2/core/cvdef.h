@@ -188,8 +188,16 @@ enum CpuFeatures {
 #  if defined __POPCNT__ || (defined _MSC_VER && _MSC_VER >= 1500)
 #    ifdef _MSC_VER
 #      include <nmmintrin.h>
+#      if defined(_M_X64)
+#        define CV_POPCNT_U64 _mm_popcnt_u64
+#      endif
+#      define CV_POPCNT_U32 _mm_popcnt_u32
 #    else
 #      include <popcntintrin.h>
+#      if defined(__x86_64__)
+#        define CV_POPCNT_U64 __builtin_popcountll
+#      endif
+#      define CV_POPCNT_U32 __builtin_popcount
 #    endif
 #    define CV_POPCNT 1
 #  endif
@@ -361,6 +369,16 @@ Cv64suf;
 #  define CV_EXPORTS
 #endif
 
+#ifndef CV_DEPRECATED
+#  if defined(__GNUC__)
+#    define CV_DEPRECATED __attribute__ ((deprecated))
+#  elif defined(_MSC_VER)
+#    define CV_DEPRECATED __declspec(deprecated)
+#  else
+#    define CV_DEPRECATED
+#  endif
+#endif
+
 #ifndef CV_EXTERN_C
 #  ifdef __cplusplus
 #    define CV_EXTERN_C extern "C"
@@ -418,9 +436,8 @@ Cv64suf;
 *          exchange-add operation for atomic operations on reference counters            *
 \****************************************************************************************/
 
-#if defined __INTEL_COMPILER && !(defined WIN32 || defined _WIN32)
-   // atomic increment on the linux version of the Intel(tm) compiler
-#  define CV_XADD(addr, delta) (int)_InterlockedExchangeAdd(const_cast<void*>(reinterpret_cast<volatile void*>(addr)), delta)
+#ifdef CV_XADD
+  // allow to use user-defined macro
 #elif defined __GNUC__
 #  if defined __clang__ && __clang_major__ >= 3 && !defined __ANDROID__ && !defined __EMSCRIPTEN__ && !defined(__CUDACC__)
 #    ifdef __ATOMIC_ACQ_REL
